@@ -9,8 +9,8 @@ import "solmate/tokens/ERC20.sol";
 contract LizardToken is ERC20 {
     /// State ///
 
-    uint8 public constant CAN_BURN = 1;
-    uint8 public constant CAN_MINT = 2;
+    uint8 public constant CAN_MINT = 1; // 00000001
+    uint8 public constant CAN_BURN = 2; // 00000010
 
     mapping(address => uint8) public permissions;
 

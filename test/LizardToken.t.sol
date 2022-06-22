@@ -29,6 +29,11 @@ contract ContractTest is Test {
         assertEq(token.totalSupply(), 100 ether);
     }
 
+    function testFailToMintMoreThan20Mil() public {
+        token.awardTokens(lizard, 20_000_000 ether);
+        token.awardTokens(lizard2, 1 ether);
+    }
+
     function testCanBurn() public {
         token.awardTokens(lizard, 100 ether);
         token.burnTokens(lizard, 100 ether);
