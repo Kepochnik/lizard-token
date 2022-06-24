@@ -4,7 +4,7 @@ pragma solidity ^0.8.15;
 import "forge-std/Test.sol";
 import "src/LizardToken.sol";
 
-contract ContractTest is Test {
+contract LizardTokenTest is Test {
     LizardToken internal token;
     address internal lizard = address(1);
     address internal lizard2 = address(2);
