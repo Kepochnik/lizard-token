@@ -42,14 +42,28 @@ contract LizardDistributorTest is Test {
     }
 
     function testUserCanClaim() public {
-        address owner = vm.addr(123456789);
+        string
+            memory mnemonic = "test test test test test test test test test test test junk";
+        uint256 privateKey = vm.deriveKey(mnemonic, 0);
+        address owner = vm.addr(privateKey);
 
         distributor.transferOwnership(owner);
 
         uint256 amount = 100 ether;
-        bytes32 hash = keccak256(abi.encodePacked(lizard, amount, "abc123"));
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                keccak256(abi.encodePacked(lizard, amount, "abc123"))
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, hash);
+        console.log(lizard);
+        console.log(amount);
         console.logBytes32(hash);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(123456789, hash);
+        console.log(v);
+        console.logBytes32(r);
+        console.logBytes32(s);
 
         vm.prank(lizard);
         distributor.claim(amount, "abc123", v, r, s);

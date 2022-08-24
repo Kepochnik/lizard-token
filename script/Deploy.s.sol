@@ -11,6 +11,8 @@ contract DeployScript is Script {
         // LizardToken lz = new LizardToken();
 
         vm.broadcast();
-        LizardDistributor ld = new LizardDistributor(ILizardToken(0x1A65532D7FFBBb8Bab09F4eeFd87d8518a630c95);
+        LizardDistributor ld = new LizardDistributor(
+            ILizardToken(0x1A65532D7FFBBb8Bab09F4eeFd87d8518a630c95)
+        );
     }
 }

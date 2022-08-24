@@ -9,6 +9,7 @@ contract LizardDistributor {
     ILizardToken public immutable token;
     address public owner;
     mapping(string => bool) public claims;
+    bytes32[] public batches;
 
     /// Errors ///
     error Unauthorized();
@@ -42,6 +43,12 @@ contract LizardDistributor {
         }
     }
 
+    function createBatch(bytes32 _merkleRoot) external {
+        if (msg.sender != owner) revert Unauthorized();
+
+        batches.push(_merkleRoot);
+    }
+
     /// @notice Allows a user to claim tokens with a valid signature
     /// @param amount number of tokens to send to caller
     /// @param nonce the unique claim id
@@ -56,7 +63,12 @@ contract LizardDistributor {
         if (claims[nonce]) revert AlreadyClaimed(nonce);
 
         // Check for valid signature
-        bytes32 hash = keccak256(abi.encodePacked(msg.sender, amount, nonce));
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                "\x19Ethereum Signed Message:\n32",
+                keccak256(abi.encodePacked(msg.sender, amount, nonce))
+            )
+        );
         address signer = ecrecover(hash, v, r, s);
         if (signer != owner) revert Unauthorized();
 
