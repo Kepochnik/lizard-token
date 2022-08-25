@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.15;
 
+import "openzeppelin/utils/cryptography/MerkleProof.sol";
+
 interface ILizardToken {
     function awardTokens(address to, uint256 amount) external;
 }
@@ -8,12 +10,12 @@ interface ILizardToken {
 contract LizardDistributor {
     ILizardToken public immutable token;
     address public owner;
-    mapping(string => bool) public claims;
-    bytes32[] public batches;
+    mapping(bytes32 => bool) public claims;
+    bytes32 public merkleRoot;
 
     /// Errors ///
     error Unauthorized();
-    error AlreadyClaimed(string nonce);
+    error AlreadyClaimed();
 
     /// Events ///
     event OwnershipTransferred(
@@ -43,38 +45,42 @@ contract LizardDistributor {
         }
     }
 
-    function createBatch(bytes32 _merkleRoot) external {
+    function setMerkleRoot(bytes32 _merkleRoot) external {
         if (msg.sender != owner) revert Unauthorized();
 
-        batches.push(_merkleRoot);
+        merkleRoot = _merkleRoot;
     }
 
-    /// @notice Allows a user to claim tokens with a valid signature
-    /// @param amount number of tokens to send to caller
-    /// @param nonce the unique claim id
+    function canClaim(
+        address _wallet,
+        uint256 _amount,
+        string calldata _claimSeries,
+        bytes32[] calldata _proof
+    ) public view returns (bool) {
+        return
+            MerkleProof.verify(
+                _proof,
+                merkleRoot,
+                keccak256(abi.encodePacked(_wallet, _amount, _claimSeries))
+            );
+    }
+
     function claim(
-        uint256 amount,
-        string calldata nonce,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        uint256 _amount,
+        string calldata _claimSeries,
+        bytes32[] calldata _proof
     ) external {
-        // Check if already claimed
-        if (claims[nonce]) revert AlreadyClaimed(nonce);
-
-        // Check for valid signature
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                "\x19Ethereum Signed Message:\n32",
-                keccak256(abi.encodePacked(msg.sender, amount, nonce))
-            )
+        bytes32 claimHash = keccak256(
+            abi.encodePacked(msg.sender, _amount, _claimSeries)
         );
-        address signer = ecrecover(hash, v, r, s);
-        if (signer != owner) revert Unauthorized();
 
-        // Register claim and award tokens
-        claims[nonce] = true;
-        token.awardTokens(msg.sender, amount);
+        if (claims[claimHash] == true) revert AlreadyClaimed();
+
+        if (canClaim(msg.sender, _amount, _claimSeries, _proof) == false)
+            revert Unauthorized();
+
+        claims[claimHash] = true;
+        token.awardTokens(msg.sender, _amount);
     }
 
     /// @notice transfers ownership of the contract to a new address

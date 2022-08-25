@@ -11,6 +11,10 @@ contract LizardDistributorTest is Test {
     address internal lizard = address(1);
     address internal lizard2 = address(2);
     address internal lizard3 = address(3);
+    bytes32 internal constant MERKLE_ROOT1 =
+        0x2bdb488e2a77d740ad346e6c4a64c8a825d9fed6b4650e8857bba5f5cf90831f;
+    bytes32 internal constant MERKLE_ROOT2 =
+        0x3df8f0ee76e00c0d83e0166282ee8c4f5c4b0f634dfb14908d6cee93dbc97144;
 
     function setUp() public {
         token = new LizardToken();
@@ -42,49 +46,53 @@ contract LizardDistributorTest is Test {
     }
 
     function testUserCanClaim() public {
-        string
-            memory mnemonic = "test test test test test test test test test test test junk";
-        uint256 privateKey = vm.deriveKey(mnemonic, 0);
-        address owner = vm.addr(privateKey);
+        distributor.setMerkleRoot(MERKLE_ROOT1);
 
-        distributor.transferOwnership(owner);
-
-        uint256 amount = 100 ether;
-        bytes32 hash = keccak256(
-            abi.encodePacked(
-                "\x19Ethereum Signed Message:\n32",
-                keccak256(abi.encodePacked(lizard, amount, "abc123"))
-            )
-        );
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(privateKey, hash);
-        console.log(lizard);
-        console.log(amount);
-        console.logBytes32(hash);
-        console.log(v);
-        console.logBytes32(r);
-        console.logBytes32(s);
+        // lizard - 10 LZRD
+        bytes32[] memory proof1 = new bytes32[](1);
+        proof1[
+            0
+        ] = 0x68d6943699773c5eac94d110209046ecf39062e98800a490f2106c064b8ac3d8;
 
         vm.prank(lizard);
-        distributor.claim(amount, "abc123", v, r, s);
+        distributor.claim(10 ether, "ODYSEE", proof1);
 
-        assertEq(token.balanceOf(lizard), 100 ether);
+        assertEq(token.balanceOf(lizard), 10 ether);
 
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                LizardDistributor.AlreadyClaimed.selector,
-                "abc123"
-            )
-        );
+        vm.expectRevert(LizardDistributor.AlreadyClaimed.selector);
         vm.prank(lizard);
-        distributor.claim(amount, "abc123", v, r, s);
+        distributor.claim(10 ether, "ODYSEE", proof1);
 
-        hash = keccak256(abi.encodePacked(lizard, amount, "def456"));
-        (v, r, s) = vm.sign(987654321, hash);
-        vm.expectRevert(
-            abi.encodeWithSelector(LizardDistributor.Unauthorized.selector)
-        );
-        vm.prank(lizard);
-        distributor.claim(amount, "def456", v, r, s);
+        vm.expectRevert(LizardDistributor.Unauthorized.selector);
+        vm.prank(lizard2);
+        distributor.claim(100 ether, "ODYSEE", proof1);
+
+        // Update Merkle Root to include new claims
+        distributor.setMerkleRoot(MERKLE_ROOT2);
+
+        // lizard2 - 35 LZRD
+        bytes32[] memory proof2 = new bytes32[](2);
+        proof2[
+            0
+        ] = 0xdf1f757cf17111591f40aaf3fa1ed46c0f3ce76c427d15c5ebab10ad64c922fa;
+        proof2[
+            1
+        ] = 0x5158bbcef4ec6db4683fed303fb8ad41af1fc3150f0e9484029f03bd76769b09;
+
+        vm.prank(lizard2);
+        distributor.claim(35 ether, "ODYSEE", proof2);
+
+        // lizard3 - 42 LZRD
+        bytes32[] memory proof3 = new bytes32[](1);
+        proof3[
+            0
+        ] = 0x2bdb488e2a77d740ad346e6c4a64c8a825d9fed6b4650e8857bba5f5cf90831f;
+
+        assertEq(token.balanceOf(lizard2), 35 ether);
+
+        vm.prank(lizard3);
+        distributor.claim(42 ether, "NEWSERIES", proof3);
+
+        assertEq(token.balanceOf(lizard3), 42 ether);
     }
 }
